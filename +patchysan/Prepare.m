@@ -167,10 +167,12 @@ classdef Prepare < patchysan.Pipeline
 methods(Static)
       function z = assembleIndexHelper(nodeSeq,startInd,endInd,featpart,fieldSize)
           import patchysan.*
+          nodeSeq
           inputs.fieldSize = fieldSize;
           inputs.nodeSeq = nodeSeq;
           inputs = repmat(inputs,1,numel(startInd));
-          z = cell2mat(arrayfun(@Prepare.assembleIndex,startInd, endInd,featpart,inputs,'UniformOutput',0));
+          debug = (arrayfun(@Prepare.assembleIndex,startInd, endInd,featpart,inputs,'UniformOutput',0));
+          z = cell2mat(debug);
       end
       function z = assembleIndex(startInd,endInd,mark,input)
         if mark==1
@@ -179,7 +181,12 @@ methods(Static)
             % offset on startInd is 0 : minus 1
             assert(all(input.nodeSeq>0),'node Seq contains negative values. NodeSeq:%s',num2str(input.nodeSeq));
             assert(endInd-startInd+1>=numel(unique(input.nodeSeq)),'# of unique node in node Sequence longer than # of column in edge-wise attribute \n endInd:%d; startInd:%d, nodeSeq:%s',endInd,startInd,num2str(input.nodeSeq));
-            z = padarray(startInd-1+input.nodeSeq,[0,input.fieldSize - numel(input.nodeSeq)],0,'post');
+            %% Important: nonzeros always returns column vec
+            z = nonzeros(padarray(startInd-1+input.nodeSeq,[0,input.fieldSize - numel(input.nodeSeq)],0,'post'));
+            if iscolumn(z)
+                z = z';
+            end
+            assert(all(z>0));
         end
       end
     

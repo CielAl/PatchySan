@@ -24,7 +24,7 @@ methods
          gDegree = degree(inputs{1});
          limit = max(gDegree(:))*params{1}.fieldSize;
          % inputs{1}.Edges{:,:},inputs{3} --> Edge, root
-         receptiveField = Normalizer.bfsearch3(inputs{1}.Edges{:,:},inputs{3},limit);
+         receptiveField = Normalizer.bfsearch3(inputs{1}.Edges.EndNodes,inputs{3},limit,0);
          outputs = nonzeros(obj.graph_normalize(inputs{1},receptiveField,params{1}));
          obj.MainFrame.fieldseq = outputs;
      end       
@@ -125,7 +125,8 @@ methods(Static)
       end
     end 
 %% BFS 
-    function [neighbor] = bfsearch3(adj, s, limit)
+% Todo - should support undirected
+    function [neighbor] = bfsearch3(adj, s, limit,isDirected)
     % A BFS implementation based on Java.
     % -- Input --
     % adj: Adjacency List
@@ -135,9 +136,16 @@ methods(Static)
     % neighbor: node sequence from BFS.
     % edgeToNew: Only for Debug/Troubleshooting
      import patchysan.SeqSelector
-
+     if nargin<4
+         isDirected = 1;
+     end
+     if ~isDirected
+         adj = unique([adj; flip(adj,2)],'rows');
+     end
        nodeList = unique(adj);
        maxNode = size(nodeList,1);
+       maxIndex = max(max(adj));
+       map =zeros(1,maxIndex); % java.util.HashMap();              
       % In case of adjacency matrix, but then all below shall be reworked.
       %  maxNode =  size(adj,1); 
 
@@ -178,8 +186,7 @@ methods(Static)
                 %queue is the list of nodes to be processed (find child)
                 queue = java.util.LinkedList();
                 %queue = zeros(1,maxNode);       
-                maxIndex = max(max(adj));
-                map =zeros(1,maxIndex); % java.util.HashMap();
+
                % listPosition = 1;
                 %% add init results
                 for ii = 1:initIndex

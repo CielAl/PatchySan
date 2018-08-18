@@ -55,7 +55,7 @@ classdef PatchySan < patchysan.patchyObj
         obj.attrFuser.execute();
         
         numGraphs  = numel(obj.graphs);
-        obj.input = zeros(obj.params.attrRow,obj.nodeLengthValue,obj.attrChannel,numGraphs);
+        obj.input = zeros(obj.params.attrRow,obj.params.nodeLengthValue,obj.attrChannel,numGraphs);
        % Default: classification only
         obj.label = zeros(1,1,1,numGraphs);
         % For each graph:
@@ -63,12 +63,13 @@ classdef PatchySan < patchysan.patchyObj
             % inputs for SeqSelector: {graph, adj}, the third slot is used
             % by Normalizer so this cell can be reused.
             g_inputs = {obj.graphs{graphId},adjacency(obj.graphs{graphId}),0};
+            g_params = {obj.params};
             % Select the node Sequence
             %           implicit setter: obj.nodeseq is assigned in
             %           obj.sequencer.execute
             % obj.sequencer.execute(g_inputs,obj.params);
             
-            nodeSequence = transpose(obj.sequencer.execute(g_inputs,obj.params));
+            nodeSequence = transpose(obj.sequencer.execute(g_inputs,g_params));
             for nodeId = 1: numel(nodeSequence) 
                 node = nodeSequence(nodeId);
                 g_inputs{3} = node;
@@ -77,10 +78,13 @@ classdef PatchySan < patchysan.patchyObj
                 
                 % implicit setter for obj.fieldseq -  debug
                 % nonzeros already applied
-                receptiveField = obj.normalizer.execute(g_inputs,obj.params);
-                featureSlice = indexer(receptiveField);
+                receptiveField = obj.normalizer.execute(g_inputs,g_params);
+                %slice the channels: works on the portion of 2d attributes,
+                %e.g. edge_attribtues, where both rows and columns should
+                %be sliced.
+                featureSlice = indexer(transpose(receptiveField));
                 fieldStartIndex = (nodeId-1)*obj.params.fieldSize+1;
-                obj.input(:,fieldStartIndex:fieldStartIndex+numel(featureSlice)-1,:,graphId)  =obj.attributes_all{graphId}(:,featureSlice,:);
+                obj.input(:,fieldStartIndex:fieldStartIndex+numel(receptiveField)-1,1:numel(featureSlice),graphId)  =obj.attributes_all{graphId}(:,receptiveField,featureSlice);
             end
                
                 obj.label(:,:,:,graphId) = obj.class{graphId};
