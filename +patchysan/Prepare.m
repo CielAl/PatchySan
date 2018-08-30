@@ -28,7 +28,7 @@ classdef Prepare < patchysan.Pipeline
           featChannel = 0;
           slicemark = zeros(featCount,2);
           for ii = 1:featCount
-              [attrCell{ii},currChannel,slicemark(ii,:)] = obj. prepareAttr(obj.MainFrame.graphs{id},obj.MainFrame.node_attributes{id},obj.MainFrame.edge_attributes{id},typeList{ii});
+              [attrCell{ii},currChannel,slicemark(ii,:)] = obj. prepareAttr(obj.MainFrame.graphs{id},obj.MainFrame.node_attributes,obj.MainFrame.edge_attributes,typeList{ii},id);
             featChannel = featChannel + currChannel;
           end
          attribute = cat(3,attrCell{:});  %  Do not use cell2mat(attrCell) if attributes contains single column vectors - matlab will drop the last singleton dimension.
@@ -38,7 +38,7 @@ classdef Prepare < patchysan.Pipeline
 
        %% Fuse the attribute
         % - if prepare field by field, the overhead may be huge, including the part to calculate feature size to allocate the attribute array 
-        function [currAttribute, featChannel,featpart] = prepareAttr(obj,graph,node_attributes,edge_attributes,attrType,varargin)
+        function [currAttribute, featChannel,featpart] = prepareAttr(obj,graph,node_attrcell,edge_attrcell,attrType,id,varargin)
 				% for pre-defined branches, varargin{1} is the nodeList. 
 				% if varargin is empty, matrix(varargin{:}) returns matrix itself: the whole slice
                 
@@ -48,6 +48,18 @@ classdef Prepare < patchysan.Pipeline
                 %              attributes. 
                 %             # If slicedim = 2, it represents edgewise feature. 
                 %              The length stored == # of nodes while the actual length fetched is the # of fieldSize 
+			
+				%% Check if attr are empty
+				if ~isempty(node_attrcell)
+					node_attributes = node_attrcell{id};
+				else
+					node_attributes = [];
+				end
+				if ~isempty(edge_attrcell)
+					edge_attributes = edge_attrcell{id};
+				else
+					edge_attributes = [];
+				end				
                if isa(attrType,'char')
                    switch(lower(attrType))
                        case  'fuse'
@@ -55,6 +67,7 @@ classdef Prepare < patchysan.Pipeline
                             featpart = [1,1; numel(varargin{:}) 1; size(edge_attributes(varargin{:}),2) 2];
                             featChannel=1+numel(varargin{:})+obj.params.fieldSize; 
                        case  'node'
+					   
                             currAttribute = node_attributes(varargin{:});
                             featChannel= size(currAttribute,3); 
                             featpart = [featChannel,1];
@@ -71,8 +84,12 @@ classdef Prepare < patchysan.Pipeline
                         % Function handle that does not support varargin
                         % but use obj.params/obj.MainFrame.params 
                            [currAttribute,featpart,featChannel] = obj.fuser(graph,node_attributes,edge_attributes);
-                       otherwise 
-                           error('unknown attribute type %s',attrType);
+					   otherwise 
+						%% Assume Centrality
+						    cent = lower(attrType);
+							currAttribute = permute(centrality(graph,cent,patchysan.Prepare.getCentKey(cent),graph.Edges.Weight),[3,1,2]); 
+                            featpart = [1 1];
+                            featChannel= size(currAttribute,3); 						  
                    end
                elseif isa(attrType,'function_handle')
                    % Function handle that support varargin as extra args
@@ -128,7 +145,7 @@ classdef Prepare < patchysan.Pipeline
           import patchysan.*;
           numGraphs = numel(obj.MainFrame.graphs);
           featureSize=  zeros(1,numGraphs);
-          obj.MainFrame.input = cell(1,numGraphs);
+          %obj.MainFrame.input = cell(1,numGraphs);
           for ii = 1:numGraphs
               [obj.MainFrame.attributes_all{ii},feat,slicemark]  = obj.getAttrById(obj.params.featureType,ii);
               %manual override - if attrSlice is given - default is empty i.e. bypass this step 
@@ -138,13 +155,13 @@ classdef Prepare < patchysan.Pipeline
               end
               featureSize(ii) = feat;
               %empty input
-              obj.MainFrame.input{ii} = zeros(obj.params.attrRow,obj.params.fieldSize*(obj.params.nodeLengthValue),obj.params.attrChannel); 
+              %obj.MainFrame.input{ii} = zeros(obj.params.attrRow,obj.params.fieldSize*(obj.params.nodeLengthValue),obj.params.attrChannel); 
               obj.featureParser{ii} = obj.parseSlice(slicemark);
           end
           %obj.
-          obj.MainFrame.attrChannel = max(featureSize);
+          obj.MainFrame.params.attrChannel = max(featureSize);
           %temp
-          obj.attrChannel = obj.MainFrame.attrChannel;
+          obj.attrChannel = obj.MainFrame.params.attrChannel;
           %outputs = {obj.MainFrame.attrChannel};
           
           %% Todo Parse slicemark 
@@ -167,7 +184,6 @@ classdef Prepare < patchysan.Pipeline
 methods(Static)
       function z = assembleIndexHelper(nodeSeq,startInd,endInd,featpart,fieldSize)
           import patchysan.*
-          nodeSeq
           inputs.fieldSize = fieldSize;
           inputs.nodeSeq = nodeSeq;
           inputs = repmat(inputs,1,numel(startInd));
@@ -180,7 +196,7 @@ methods(Static)
         else
             % offset on startInd is 0 : minus 1
             assert(all(input.nodeSeq>0),'node Seq contains negative values. NodeSeq:%s',num2str(input.nodeSeq));
-            assert(endInd-startInd+1>=numel(unique(input.nodeSeq)),'# of unique node in node Sequence longer than # of column in edge-wise attribute \n endInd:%d; startInd:%d, nodeSeq:%s',endInd,startInd,num2str(input.nodeSeq));
+            assert(endInd-startInd+1>=numel(unique(input.nodeSeq)),'# of unique node in node Sequence longer than # of column in edge-wise attribute \n endInd:%d; startInd:%d, nodeSeq:%s. Fprget to assign attributes?',endInd,startInd,num2str(input.nodeSeq));
             %% Important: nonzeros always returns column vec
             z = nonzeros(padarray(startInd-1+input.nodeSeq,[0,input.fieldSize - numel(input.nodeSeq)],0,'post'));
             if iscolumn(z)
@@ -190,7 +206,14 @@ methods(Static)
         end
       end
     
-    
+	  function out = getCentKey(name)
+		  switch(name)
+			  case {'closeness', 'outcloseness', 'incloseness',  'betweenness'}
+				  out = 'Cost';
+			  otherwise
+				  out = 'Importance';
+		  end
+	  end
 end
     
 end

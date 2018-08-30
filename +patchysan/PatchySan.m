@@ -11,7 +11,7 @@ classdef PatchySan < patchysan.patchyObj
     
     input
     % By default identical to output
-    label
+    output
   end
     properties (Access = {?patchysan.Pipeline, ?patchysan.PatchySan}, Hidden, Transient)
         %temporal variables
@@ -27,13 +27,13 @@ classdef PatchySan < patchysan.patchyObj
     normalizer patchysan.Pipeline 
     attrFuser patchysan.Pipeline  
     gatherer patchysan.Pipeline
-    attrChannel double
+   % attrChannel double
   end
   
   
   methods
   
-    %% Constructor  
+    %% Constructor   
     function obj = PatchySan(varargin)
         %must unpack/flatten with {:}
       import patchysan.*
@@ -50,14 +50,16 @@ classdef PatchySan < patchysan.patchyObj
     end
     
     %% Evaluation
-    function evaluate(obj)
+   function  eval(obj)
         % attributes_all is assigned here, as well as featureParser
+		tic;
         obj.attrFuser.execute();
         
         numGraphs  = numel(obj.graphs);
-        obj.input = zeros(obj.params.attrRow,obj.params.nodeLengthValue,obj.attrChannel,numGraphs);
+		%% seqStep does not affect length. So width: field*len
+        obj.input = zeros(obj.params.attrRow,obj.params.fieldSize*(obj.params.nodeLengthValue),obj.params.attrChannel,numGraphs);
        % Default: classification only
-        obj.label = zeros(1,1,1,numGraphs);
+        obj.output = zeros(1,1,1,numGraphs);
         % For each graph:
         for graphId = 1:numGraphs
             % inputs for SeqSelector: {graph, adj}, the third slot is used
@@ -68,9 +70,9 @@ classdef PatchySan < patchysan.patchyObj
             %           implicit setter: obj.nodeseq is assigned in
             %           obj.sequencer.execute
             % obj.sequencer.execute(g_inputs,obj.params);
-            
+
             nodeSequence = transpose(obj.sequencer.execute(g_inputs,g_params));
-            for nodeId = 1: numel(nodeSequence) 
+			for nodeId = 1: numel(nodeSequence) 
                 node = nodeSequence(nodeId);
                 g_inputs{3} = node;
                 % inputs for Normalizer: {graph, adj, root node}
@@ -82,16 +84,25 @@ classdef PatchySan < patchysan.patchyObj
                 %slice the channels: works on the portion of 2d attributes,
                 %e.g. edge_attribtues, where both rows and columns should
                 %be sliced.
+				
                 featureSlice = indexer(transpose(receptiveField));
                 fieldStartIndex = (nodeId-1)*obj.params.fieldSize+1;
+	
                 obj.input(:,fieldStartIndex:fieldStartIndex+numel(receptiveField)-1,1:numel(featureSlice),graphId)  =obj.attributes_all{graphId}(:,receptiveField,featureSlice);
-            end
+		
+			end
                
-                obj.label(:,:,:,graphId) = obj.class{graphId};
+                obj.output(:,:,:,graphId) = obj.class{graphId};
         end
-        
+        toc;
    end
     
+   %% Getter
+   function [input,output] = fetch(obj)
+	   input = obj.input;
+	   output = obj.output;
+   end
+   
     %% Setter
     % use obj.load
     
