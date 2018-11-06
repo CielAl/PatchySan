@@ -44,7 +44,7 @@ end
                        sortTarget = -1;
                   case('rw')
 
-                  case patchysan.Sequencer.centrality_type
+                  case patchysan.SeqSelector.centrality_type
                       sequencing =[centrality(graphInput,sequenceType)  canon(full(currAdj),wl_equivalence_classes(currAdj))];
                       sortTarget = [-1 2];
                 case 'override'

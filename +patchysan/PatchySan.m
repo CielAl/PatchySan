@@ -52,7 +52,7 @@ classdef PatchySan < patchysan.patchyObj
     %% Evaluation
    function  eval(obj)
         % attributes_all is assigned here, as well as featureParser
-		tic;
+	
         obj.attrFuser.execute();
         
         numGraphs  = numel(obj.graphs);
@@ -62,6 +62,7 @@ classdef PatchySan < patchysan.patchyObj
         obj.output = zeros(1,1,1,numGraphs);
         % For each graph:
         for graphId = 1:numGraphs
+			%% use obj2 -> suppress broadcasting in g_inputs 
             % inputs for SeqSelector: {graph, adj}, the third slot is used
             % by Normalizer so this cell can be reused.
             g_inputs = {obj.graphs{graphId},adjacency(obj.graphs{graphId}),0};
@@ -94,7 +95,7 @@ classdef PatchySan < patchysan.patchyObj
                
                 obj.output(:,:,:,graphId) = obj.class{graphId};
         end
-        toc;
+
    end
     
    %% Getter
