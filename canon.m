@@ -21,7 +21,7 @@ assert(ismatrix(subGraph) && numel(dim_graph)==2 && ~diff(dim_graph),'Not Square
 % Symmetric -> conditions in builtin graph.m 
 % Note: matrix contains NaN would be detected by issymmetric. But digraph
 % is allowed and hence not required to check if the adj is symmetric
-assert(isnumeric(subGraph) && ~sum(isnan(subGraph(:))),'Not Numeric or has NaN');
+assert((isnumeric(subGraph) || islogical(subGraph)) && ~sum(isnan(subGraph(:))),'Not Numeric or has NaN');
 
 %%  Must be dense matrix and double. Logical will crash NAUTY
 subGraph = full(double(subGraph~=0));
