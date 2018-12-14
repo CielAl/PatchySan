@@ -60,13 +60,13 @@ graphDB.meta = struct(params);
 	graphvec_group = graphvec_group(cellAll);
 	labels_group = labels_group(cellAll);
 	
-    groupSlice = floor(numGroups*cutFactor);    
+    %groupSlice = floor(numGroups*cutFactor);    
     %% Shuffle the portion of train. leave groups of test untouched.
-    graphvec_group = [cellfun(@(x) x(:,:,:,randperm(clones)) ,graphvec_group(1:groupSlice),'UniformOutput',false),graphvec_group(groupSlice+1:end)];
-    labels_group = [cellfun(@(x) x(:,:,:,randperm(clones)) , labels_group(1:groupSlice),'UniformOutput',false) ,labels_group(groupSlice+1:end)];
-    cell_index= randperm(groupSlice);
-    graphvec_group(1:groupSlice) = graphvec_group(cell_index);
-    labels_group(1:groupSlice) = labels_group(cell_index);
+   % graphvec_group = [cellfun(@(x) x(:,:,:,randperm(clones)) ,graphvec_group(1:groupSlice),'UniformOutput',false),graphvec_group(groupSlice+1:end)];
+    %labels_group = [cellfun(@(x) x(:,:,:,randperm(clones)) , labels_group(1:groupSlice),'UniformOutput',false) ,labels_group(groupSlice+1:end)];
+    %cell_index= randperm(groupSlice);
+    %graphvec_group(1:groupSlice) = graphvec_group(cell_index);
+    %labels_group(1:groupSlice) = labels_group(cell_index);
     
     %%  use cat. cannot specify dim in cell2mat
     graphvec = cat(4,graphvec_group{:});
@@ -77,7 +77,7 @@ graphDB.meta = struct(params);
     
     
     
-%graphvec = zscore(graphvec,0,4);
+graphvec = zscore(graphvec,0,4);
 
 %Assume clones is even, then 0.5 must exactly cut through groups.
 %% Cut already applied
