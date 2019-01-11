@@ -77,7 +77,7 @@ graphDB.meta = struct(params);
     
     
     
-graphvec = zscore(graphvec,0,4);
+%graphvec = zscore(graphvec,0,4);
 
 %Assume clones is even, then 0.5 must exactly cut through groups.
 %% Cut already applied
