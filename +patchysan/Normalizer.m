@@ -24,6 +24,9 @@ methods
          gDegree = degree(inputs{1});
          limit = max(gDegree(:))*params{1}.fieldSize;
          % inputs{1}.Edges{:,:},inputs{3} --> Edge, root
+		 if limit==0
+			 limit=1;
+		 end
          receptiveField = Normalizer.bfsearch3(inputs{1}.Edges.EndNodes,inputs{3},limit,0);
          outputs = nonzeros(obj.graph_normalize(inputs{1},receptiveField,params{1}));
          obj.MainFrame.fieldseq = outputs;
